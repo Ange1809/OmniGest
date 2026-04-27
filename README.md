@@ -1,58 +1,57 @@
-1. ¿A qué apuntamos y por qué lo hicimos? (Motivación y Objetivos)
-El Problema: Notamos que los comercios medianos (supermercados de barrio, despensas grandes, ferreterías) suelen usar planillas de Excel o sistemas muy básicos para manejar su stock y ventas. Cuando el negocio crece y acumulan miles de tickets, el sistema colapsa, las búsquedas se vuelven lentas y se pierde el control de los atributos de los productos y de las fechas de las promociones.
+# 📑 Documento de Especificación Técnica: OmniGest
 
-La Solución (El Objetivo): Desarrollamos OmniGest, un sistema de gestión basado puramente en un motor de base de datos robusto. El objetivo es demostrar cómo, aplicando normalización (3NF) y herramientas avanzadas de PostgreSQL, se puede gestionar un volumen de 1 millón de registros de forma ultra rápida, manteniendo la integridad de los datos y permitiendo análisis de negocio complejos sin que el sistema se "cuelgue".
+**Materia:** Base de Datos III  
+**Equipo de Desarrollo:** Angélica, Mauro, Franco  
+**Versión del Documento:** 1.0  
 
-2. Arquitectura y Stack Tecnológico
-Para este proyecto decidimos simular un entorno de desarrollo profesional, alejándonos de las herramientas básicas. Utilizamos la siguiente arquitectura:
+> **📌 RESUMEN EJECUTIVO**
+> OmniGest es un sistema de gestión transaccional diseñado para resolver las deficiencias de rendimiento y almacenamiento que sufren los comercios medianos al escalar. El proyecto demuestra la capacidad de **PostgreSQL** para manejar un volumen de **1.000.000 de registros**, aplicando normalización (3NF), indexación avanzada (GIN/GiST) y consultas analíticas complejas (Window Functions, CTE), garantizando velocidad, integridad y escalabilidad.
 
-Motor de Base de Datos: PostgreSQL. Elegido por su capacidad para manejar grandes volúmenes de datos transaccionales y su soporte nativo para tipos de datos complejos (JSONB, Rangos) y estructuras recursivas.
+---
 
-Lenguaje de Automatización: Python 3. Lo usamos para crear los scripts de conexión segura al motor mediante la librería psycopg2.
+## 1. Contexto y Justificación del Proyecto
 
-Entorno de Desarrollo: Visual Studio Code (VS Code). Centralizamos los scripts SQL y Python en un solo lugar.
+### 🔻 El Problema Detectado
+En el sector retail (supermercados, ferreterías, grandes despensas), el crecimiento del volumen de ventas expone las fallas de los sistemas de gestión básicos (muchas veces basados en planillas estáticas). Los principales puntos de dolor son:
+* **Caída del rendimiento:** Al acumular miles de tickets históricos, las búsquedas por código de barras se vuelven inviables.
+* **Rigidez de datos:** Imposibilidad de guardar atributos variables (ej. "peso" en alimentos vs. "cepa" en vinos) sin arruinar la estructura de la base de datos con columnas nulas.
+* **Errores humanos en facturación:** Solapamiento de promociones y descuentos por falta de restricciones a nivel de motor de base de datos.
 
-Control de Versiones: Git y GitHub. Trabajamos con un modelo de ramas (ej: feat/carga-masiva) para evitar sobreescribir el trabajo de los compañeros y proteger la rama main, implementando también archivos .gitignore y .env por seguridad.
+### 🎯 La Solución Propuesta
+El desarrollo de **OmniGest** traslada la responsabilidad de la velocidad y la integridad estructural directamente al **motor de base de datos**. Al no depender del código de la aplicación (frontend/backend) para estas validaciones, logramos un sistema a prueba de fallos y altamente optimizado.
 
-3. Estructura de los Datos
-La base de datos de OmniGest está compuesta por 8 tablas fuertemente tipadas y relacionadas. Los detalles más destacados de nuestro modelado son:
+---
 
-Flexibilidad (JSONB): En la tabla productos incluimos una columna especificaciones de tipo JSONB. Esto nos permite guardar atributos que varían según el producto (ej. un vino tiene "cepa", un queso tiene "peso") sin tener que crear múltiples columnas vacías en la tabla.
+## 2. Arquitectura y Stack Tecnológico
 
-Integridad Temporal (DATERANGE): En la tabla promociones usamos rangos de fechas nativos para evitar solapamientos de ofertas.
+Para simular un entorno de desarrollo profesional, se implementó la siguiente arquitectura técnica:
 
-Recursividad: La tabla categorias tiene una llave foránea que apunta a sí misma (id_padre), permitiendo crear un "árbol" infinito de subcategorías.
+| Componente | Tecnología Aplicada | Justificación Técnica |
+| :--- | :--- | :--- |
+| **Motor Relacional** | PostgreSQL 15+ | Soporte nativo para tipos de datos complejos (JSONB, Rangos), estructuras recursivas y robustez transaccional. |
+| **Automatización** | Python 3 (`psycopg2`) | Permite crear scripts de carga masiva y conexión segura mediante variables de entorno, aislando las credenciales. |
+| **Entorno de Desarrollo**| VS Code + SQLTools | Centralización del código SQL y Python en un entorno integrado, facilitando pruebas en tiempo real. |
+| **Control de Versiones**| Git / GitHub | Implementación de flujo de trabajo por ramas (`feat/carga-masiva`) y protección del código mediante `.gitignore`. |
 
-4. División del Equipo y Roles (Quién hace qué)
-El proyecto se dividió en tres fases técnicas, asignadas a cada socio del equipo:
+---
 
-👩‍💻 Angélica - Arquitecta de Datos (Fase 1: Modelado y Carga Masiva)
-Misión: Construir los cimientos del sistema.
+## 3. Diseño y Modelado de Datos (DER)
 
-Tareas: Diseñó el Diagrama Entidad-Relación (DER) asegurando la Tercera Forma Normal (3NF). Además, programó los scripts SQL para insertar 1.000.000 de registros (200.000 productos y 800.000 detalles de venta).
+La base de datos se estructuró bajo la **Tercera Forma Normal (3NF)**. Las innovaciones arquitectónicas clave son:
 
-Técnicas usadas: En lugar de usar bucles ineficientes, implementó la función nativa generate_series() de PostgreSQL encapsulada en transacciones (BEGIN; COMMIT;) para realizar la carga masiva en cuestión de segundos sin sobrecargar la memoria (I/O).
+> **💡 INNOVACIONES ARQUITECTÓNICAS**
+> * **Flexibilidad Estructural (Tipado JSONB):** La entidad `productos` incluye la columna `especificaciones`. Esto permite almacenar documentos JSON con atributos dinámicos, manteniendo la integridad relacional del resto de la tabla.
+> * **Integridad Temporal (Tipado DATERANGE):** La entidad `promociones` utiliza rangos de fechas. PostgreSQL impide matemáticamente la inserción de fechas superpuestas para un mismo producto.
+> * **Navegación Recursiva:** La entidad `categorias` implementa una llave foránea autorreferencial (`id_padre`), permitiendo generar jerarquías infinitas (árboles de categorías).
 
-👨‍💻 Franco - Analista de Performance (Fase 2: Índices y Optimización)
-Misión: Hacer que el sistema sea rápido a pesar de tener un millón de filas.
+---
 
-Tareas: Toma la base pesada de Angélica y ejecuta consultas complejas evaluando el tiempo de respuesta con EXPLAIN ANALYZE.
+## 4. Fases del Proyecto y Asignación de Roles
 
-Técnicas usadas: Implementa índices estratégicos:
+Para garantizar la cobertura total de los requerimientos de la cátedra, el proyecto se dividió en tres fases técnicas especializadas:
 
-B-Tree para búsquedas comunes (código de barras).
-
-GIN (Generalized Inverted Index) para buscar rápidamente dentro de la columna JSONB de especificaciones.
-
-GiST para indexar las fechas de las promociones.
-
-Luego, utiliza herramientas visuales (como Dalibo) para graficar cómo el motor optimiza los tiempos de búsqueda de segundos a milisegundos.
-
-👨‍💻 Mauro - Ingeniero de Datos (Fase 3: Lógica de Negocio Avanzada)
-Misión: Extraer valor e inteligencia de los datos almacenados.
-
-Tareas: Escribir consultas SQL de nivel avanzado para generar reportes que el dueño del negocio necesita para tomar decisiones.
-
-Técnicas usadas: * CTE Recursivas (Common Table Expressions): Para recorrer todo el árbol de categorías y subcategorías de un solo vistazo.
-
-Window Functions: Utiliza funciones como RANK() y ROW_NUMBER() agrupadas mediante la cláusula OVER (PARTITION BY ...) para generar el ranking (Top 10) de los productos más vendidos de manera analítica, superando las limitaciones de un simple GROUP BY.
+| Fase | Responsable | Rol Técnico | Tareas Críticas y Herramientas |
+| :---: | :--- | :--- | :--- |
+| **Fase 1** | **Angélica** | Arquitecta de Datos | **Modelado y Carga Masiva:**<br>• Diseño del DER en 3NF.<br>• Inserción rápida de 1.000.000 de registros usando `generate_series()` encapsulado en transacciones (`BEGIN; COMMIT;`) para optimizar I/O. |
+| **Fase 2** | **Franco** | Analista de Performance | **Indexación y Optimización:**<br>• Diagnóstico de cuellos de botella con `EXPLAIN ANALYZE`.<br>• Creación de índices **B-Tree**, **GIN** (para JSONB) y **GiST** (para rangos de fechas).<br>• Documentación visual con Dalibo. |
+| **Fase 3** | **Mauro** | Ingeniero de Datos | **Lógica de Negocio y SQL Avanzado:**<br>• Desarrollo de consultas recursivas (CTE) para mapear el árbol de subcategorías.<br>• Creación de reportes con *Window Functions* (`RANK() OVER`) para estadísticas de ventas. |
