@@ -53,5 +53,6 @@ Para garantizar la cobertura total de los requerimientos de la cátedra, el proy
 | Fase | Responsable | Rol Técnico | Tareas Críticas y Herramientas |
 | :---: | :--- | :--- | :--- |
 | **Fase 1** | **Angélica** | Arquitecta de Datos | **Modelado y Carga Masiva:**<br>• Diseño del DER en 3NF.<br>• Inserción rápida de 1.000.000 de registros usando `generate_series()` encapsulado en transacciones (`BEGIN; COMMIT;`) para optimizar I/O. |
-| **Fase 2** | **Franco** | Analista de Performance | **Indexación y Optimización:**<br>• Diagnóstico de cuellos de botella con `EXPLAIN ANALYZE`.<br>• Creación de índices **B-Tree**, **GIN** (para JSONB) y **GiST** (para rangos de fechas).<br>• Documentación visual con Dalibo. |
-| **Fase 3** | **Mauro** | Ingeniero de Datos | **Lógica de Negocio y SQL Avanzado:**<br>• Desarrollo de consultas recursivas (CTE) para mapear el árbol de subcategorías.<br>• Creación de reportes con *Window Functions* (`RANK() OVER`) para estadísticas de ventas. |
+| **Fase 2** | **Franco** | Analista de Performance | **Indexación y Optimización:**<br>• Diagnóstico de cuellos de botella con `EXPLAIN ANALYZE`.<br>• Creación de índices **B-Tree**|
+| **Fase 3** | **Tiziana** | Analista de Performance | ** **GIN** (para JSONB) y **GiST** (para rangos de fechas).<br>• Documentación visual con Dalibo. |
+| **Fase 4** | **Mauro** | Ingeniero de Datos | **Lógica de Negocio y SQL Avanzado:**<br>• Desarrollo de consultas recursivas (CTE) para mapear el árbol de subcategorías.<br>• Creación de reportes con *Window Functions* (`RANK() OVER`) para estadísticas de ventas. |
