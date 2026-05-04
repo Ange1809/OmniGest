@@ -1,0 +1,59 @@
+-- Insertamos una promo para el producto 1 que dure todo el 2026
+INSERT INTO promociones (id_producto, descuento_pct, vigencia)
+VALUES (1, 15.00, '[2026-01-01, 2026-12-31]');
+
+--algunas consultas--
+SELECT count(*) FROM ventas_detalle;
+
+SELECT count(*) FROM productos;
+
+SELECT * FROM ventas_cabecera;
+
+SELECT * FROM productos WHERE sku = 'SKU-150000';
+
+-- El comando que usaste para auditar el rendimiento
+EXPLAIN ANALYZE
+SELECT c.nombre, SUM(vd.cantidad)
+FROM categorias c
+JOIN productos p ON c.id = p.id_categoria
+JOIN ventas_detalle vd ON p.id = vd.id_producto
+GROUP BY c.nombre;
+
+-- El índice que sugeriste para acelerar los JOINS
+CREATE INDEX idx_ventas_detalle_producto ON ventas_detalle(id_producto);
+
+-- El índice especial (GIST) que validaste para las promociones
+-- (Asegurando que la extensión btree_gist estuviera activa)
+CREATE INDEX idx_promos_vigencia ON promociones USING GIST (vigencia);
+
+.
+
+--El "Gran Filtro" (Uso de Índices)
+--busca productos específicos dentro de un mar de 800,000 ventas. Aquí es donde el índice que validaste (idx_ventas_detalle_producto) marca la diferencia entre esperar segundos o milisegundos.
+
+EXPLAIN ANALYZE
+SELECT id_producto, SUM(cantidad) as total_vendido
+FROM ventas_detalle
+WHERE id_producto BETWEEN 100 AND 500
+GROUP BY id_producto
+ORDER BY total_vendido DESC;
+
+--Cruce de Tablas Masivo (Join de Alto Rendimiento)
+--Vamos a pedirle al sistema que nos diga cuánto dinero se recaudó por cada categoría de productos. Esta consulta cruza tres tablas gigantes.
+
+EXPLAIN ANALYZE
+SELECT c.nombre AS categoria, SUM(vd.precio_unitario_cobrado * vd.cantidad) AS recaudacion
+FROM categorias c
+JOIN productos p ON c.id = p.id_categoria
+JOIN ventas_detalle vd ON p.id = vd.id_producto
+GROUP BY c.nombre
+ORDER BY recaudacion DESC;
+
+--Prueba 3: La Prueba del "Rango de Tiempo"
+--Evalúa si la base de datos puede filtrar ventas usando los rangos de fechas de las promociones (DATERANGE) que configuraste.
+
+EXPLAIN ANALYZE
+SELECT COUNT(*) 
+FROM ventas_cabecera vc
+JOIN promociones pr ON vc.fecha::date <@ pr.vigencia
+WHERE pr.id = 1;

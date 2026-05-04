@@ -35,12 +35,3 @@ FROM generate_series(1, 800000) i;
 
 COMMIT;
 
---algunas consultas--
-SELECT count(*) FROM ventas_detalle;
-
-SELECT count(*) FROM productos;
-
-SELECT * FROM productos WHERE sku = 'SKU-150000';
-
--- LIMPIEZA TOTAL
-TRUNCATE TABLE ventas_detalle, ventas_cabecera, productos, categorias, promociones RESTART IDENTITY CASCADE;
