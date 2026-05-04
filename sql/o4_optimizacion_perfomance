@@ -56,4 +56,4 @@ EXPLAIN ANALYZE
 SELECT COUNT(*) 
 FROM ventas_cabecera vc
 JOIN promociones pr ON vc.fecha::date <@ pr.vigencia
-WHERE pr.id = 1;
+WHERE pr.id = 1; 
