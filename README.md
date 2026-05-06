@@ -1,7 +1,7 @@
 # 📑 Documento de Especificación Técnica: OmniGest
 
 **Materia:** Base de Datos III  
-**Equipo de Desarrollo:** Angélica, Mauro, Franco  
+**Equipo de Desarrollo:** Angélica, Mauro, Franco, Tiziana.  
 **Versión del Documento:** 1.0  
 
 > **📌 RESUMEN EJECUTIVO**
