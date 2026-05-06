@@ -26,7 +26,6 @@ CREATE INDEX idx_ventas_detalle_producto ON ventas_detalle(id_producto);
 -- (Asegurando que la extensión btree_gist estuviera activa)
 CREATE INDEX idx_promos_vigencia ON promociones USING GIST (vigencia);
 
-.
 
 --El "Gran Filtro" (Uso de Índices)
 --busca productos específicos dentro de un mar de 800,000 ventas. Aquí es donde el índice que validaste (idx_ventas_detalle_producto) marca la diferencia entre esperar segundos o milisegundos.
@@ -57,3 +56,18 @@ SELECT COUNT(*)
 FROM ventas_cabecera vc
 JOIN promociones pr ON vc.fecha::date <@ pr.vigencia
 WHERE pr.id = 1; 
+
+-- Tareas: Índices GIN, GiST y Documentación visual en Dalibo
+
+-- A. OPTIMIZACIÓN DE DATOS DINÁMICOS (Tarea: GIN para JSONB)
+-- Este índice permite que las búsquedas en la columna 'especificaciones' sean rápidas.
+CREATE INDEX idx_productos_especificaciones_gin ON productos USING GIN (especificaciones);
+
+-- B. OPTIMIZACIÓN DE RANGOS (Tarea: GiST para fechas)
+-- Este índice optimiza las búsquedas de vigencia en la tabla promociones.
+CREATE INDEX idx_promos_vigencia_gist ON promociones USING GIST (vigencia);
+
+-- C. DOCUMENTACIÓN VISUAL (Para usar en explain.dalibo.com)
+EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON)
+SELECT * FROM productos 
+WHERE especificaciones @> '{"color": "rojo"}';
