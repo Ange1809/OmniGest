@@ -4,7 +4,7 @@
 **Equipo de Desarrollo:** Angélica, Mauro, Franco, Tiziana.  
 **Versión del Documento:** 1.0  
 
-> **📌 RESUMEN EJECUTIVO**
+> **📌 RESUMEN**
 > OmniGest es un sistema de gestión transaccional diseñado para resolver las deficiencias de rendimiento y almacenamiento que sufren los comercios medianos al escalar. El proyecto demuestra la capacidad de **PostgreSQL** para manejar un volumen de **1.000.000 de registros**, aplicando normalización (3NF), indexación avanzada (GIN/GiST) y consultas analíticas complejas (Window Functions, CTE), garantizando velocidad, integridad y escalabilidad.
 
 ---
