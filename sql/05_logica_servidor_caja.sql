@@ -1,5 +1,5 @@
 -- =============================================================================
--- ARCHIVO: 03_logica_servidor_caja.sql
+-- ARCHIVO: 05_logica_servidor_caja.sql
 -- DESCRIPCIÓN: Capa procedural de Facturación, Excepciones y Hardening (Angelica)
 -- =============================================================================
 
@@ -13,16 +13,16 @@ BEGIN
     RETURN p_monto * 0.21;
 END;
 $$ LANGUAGE plpgsql
-IMMUTABLE -- Optimización extrema: el valor nunca cambia lógicamente [cite: 818, 993]
-SECURITY DEFINER -- Ejecución controlada (Privilegio Mínimo) [cite: 1006]
-SET search_path = public; -- Previene ataques de escalada de privilegios [cite: 1007]
+IMMUTABLE -- Optimización: valor constante puro
+SECURITY DEFINER -- Principio de privilegio mínimo
+SET search_path = public;
 
 
 -- -----------------------------------------------------------------------------
 -- REQUISITO A, B y C: PROCEDIMIENTO DE FACTURACIÓN COMPLEJA
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE sp_procesar_venta_completa(
-    p_metodo_pago ventas_cabecera.metodo_pago%TYPE, -- Robustez mediante %TYPE [cite: 668, 995]
+    p_metodo_pago ventas_cabecera.metodo_pago%TYPE, -- Robustez mediante %TYPE
     p_id_producto productos.id%TYPE,
     p_cantidad INT,
     OUT p_exito BOOLEAN,
@@ -52,42 +52,39 @@ BEGIN
         RAISE EXCEPTION 'Código de producto (%) inválido o inexistente.', p_id_producto;
     END IF;
 
-    -- 3. SAVEPOINT para evitar abortar toda la transacción ante fallos parciales
-    SAVEPOINT sv_registro_detalle; [cite: 845, 999]
-
+    -- 3. SUB-BLOQUE SEGURO (PostgreSQL crea un SAVEPOINT implícito aquí)
     BEGIN
         INSERT INTO ventas_detalle (id_venta, id_producto, cantidad, precio_unitario_cobrado)
         VALUES (v_id_venta, p_id_producto, p_cantidad, v_precio_costo);
         
-        RELEASE SAVEPOINT sv_registro_detalle; [cite: 847]
-        
     EXCEPTION WHEN OTHERS THEN
-        ROLLBACK TO SAVEPOINT sv_registro_detalle; -- Sub-rollback transaccional [cite: 754, 846]
+        -- Al entrar aquí, PostgreSQL YA HIZO el rollback automático al inicio del sub-bloque.
+        -- No hace falta (ni se permite) escribir ROLLBACK TO SAVEPOINT de forma manual.
         
         -- Extracción de metadatos forenses del error (Requisito C)
         GET STACKED DIAGNOSTICS 
-            v_sqlstate = RETURNED_SQLSTATE, [cite: 761, 783]
-            v_message = MESSAGE_TEXT, [cite: 764, 783]
-            v_context = PG_EXCEPTION_CONTEXT; [cite: 770, 783]
+            v_sqlstate = RETURNED_SQLSTATE,
+            v_message = MESSAGE_TEXT,
+            v_context = PG_EXCEPTION_CONTEXT;
 
-        -- Logueo persistente sin tumbar la operación completa [cite: 775]
+        -- Logueo persistente en la caja negra sin tumbar la cabecera
         INSERT INTO audit_logs (codigo_error, mensaje_error, contexto_error)
         VALUES (v_sqlstate, 'Fallo controlado en detalle: ' || v_message, v_context);
         
-        RAISE NOTICE 'Transacción secundaria recuperada vía Savepoint.';
+        RAISE NOTICE 'Transacción secundaria recuperada exitosamente vía Savepoint automático.';
     END;
 
-    -- 4. Sincronización del total macro de la venta [cite: 529]
+    -- 4. Sincronización del total macro de la venta
     UPDATE ventas_cabecera 
     SET total = (SELECT COALESCE(SUM(cantidad * precio_unitario_cobrado), 0) FROM ventas_detalle WHERE id_venta = v_id_venta)
     WHERE id = v_id_venta;
 
-    COMMIT; -- Confirmación física en almacenamiento [cite: 839, 998]
+    COMMIT; -- Confirmación física en almacenamiento
     p_exito := TRUE;
     p_mensaje := 'Factura emitida con éxito. ID: ' || v_id_venta;
 
 EXCEPTION WHEN OTHERS THEN
-    ROLLBACK; -- Botón de pánico transaccional (Consistencia Total) [cite: 840, 998]
+    ROLLBACK; -- Botón de pánico transaccional (Si muere la cabecera)
     
     GET STACKED DIAGNOSTICS 
         v_sqlstate = RETURNED_SQLSTATE,
@@ -109,10 +106,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION fn_trg_auditar_productos_seguros()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Normalización imperativa mediante pseudovariables (NEW)
-    NEW.sku := UPPER(NEW.sku); [cite: 1011]
+    NEW.sku := UPPER(NEW.sku);
 
-    -- Validación preventiva estricta (BEFORE INSERT) [cite: 1010]
     IF NEW.precio_costo <= 0 THEN
         RAISE EXCEPTION 'Violación de consistencia: El precio del producto no puede ser negativo o cero.';
     END IF;
@@ -121,7 +116,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Dropeamos por seguridad antes de crear para evitar conflictos en pgAdmin
+DROP TRIGGER IF EXISTS trg_auditar_productos_seguros ON productos;
+
 CREATE TRIGGER trg_auditar_productos_seguros
-BEFORE INSERT ON productos -- Intercepción DML por cada fila [cite: 1009, 1010]
+BEFORE INSERT ON productos 
 FOR EACH ROW
 EXECUTE FUNCTION fn_trg_auditar_productos_seguros();
+
+
+
+-- Prueba una venta con cantidad negativa para ver cómo actúa el savepoint automático
+CALL sp_procesar_venta_completa('Efectivo'::varchar, 1, -5, NULL, NULL);
+
+-- Revisa que la cabecera se guardó y el error quedó registrado en tu bitácora
+SELECT * FROM audit_logs ORDER BY fecha DESC LIMIT 1;

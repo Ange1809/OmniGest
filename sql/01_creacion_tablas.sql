@@ -57,3 +57,13 @@ CREATE TABLE audit_logs (
     mensaje_error TEXT, -- Almacena MESSAGE_TEXT [cite: 764, 1003]
     contexto_error TEXT -- Almacena el Stack Trace [cite: 770]
 );
+
+-- Al final de tu archivo 01_creacion_tablas.sql:
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    fecha TIMESTAMPTZ DEFAULT NOW(),
+    usuario TEXT DEFAULT current_user,
+    codigo_error TEXT,
+    mensaje_error TEXT,
+    contexto_error TEXT
+);
