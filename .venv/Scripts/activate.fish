@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV 'd:\TRABAJOS UPC\base de datos III\omnigest\OmniGest\.venv'
+set -gx VIRTUAL_ENV 'C:\Users\Lou\2 Año Full Stack\Base de datos 3\OmniGest\OmniGest\.venv'
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"Scripts $PATH

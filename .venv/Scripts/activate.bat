@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set "VIRTUAL_ENV=d:\TRABAJOS UPC\base de datos III\omnigest\OmniGest\.venv"
+set "VIRTUAL_ENV=C:\Users\Lou\2 Año Full Stack\Base de datos 3\OmniGest\OmniGest\.venv"
 
 if not defined PROMPT set PROMPT=$P$G
 
