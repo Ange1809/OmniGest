@@ -11,10 +11,13 @@ def probar_conexion():
             port=os.getenv("DB_PORT"),
             dbname=os.getenv("DB_NAME"),
             user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASS"),
-            client_encoding='utf8' # <--- ESTA ES LA MAGIA PARA VER EL ERROR REAL
+            password=os.getenv("DB_PASS")
         )
-        
+        # Establecer la codificación del cliente explícitamente
+        try:
+            conexion.set_client_encoding('UTF8')
+        except Exception:
+            pass
         print("✅ ¡Conexión exitosa a la base de datos OmniGest!")
         
         cursor = conexion.cursor()

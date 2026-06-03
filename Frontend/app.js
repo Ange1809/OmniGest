@@ -22,56 +22,61 @@ async function cargarTotalFacturado() {
     } catch (error) {
         console.error(error);
         txtTotal.innerText = "Error";
-        alert("No se pudo conectar con la función de cálculo del servidor.");
+        alert("No se pudo conectar con el servidor backend. Verifica que Flask esté corriendo y que la base de datos PostgreSQL acepte conexiones en localhost:5432.");
     }
 }
 
 // 2. ejecución del procedimiento (FORMULARIO ANIDADO)
-document.getElementById('form-transaccion').addEventListener('submit', async (e) => {
-    e.preventDefault(); // Evita que la página se recargue
+function inicializarFormulario() {
+    const form = document.getElementById('form-transaccion');
+    if (!form) return;
 
-    const msgBox = document.getElementById('msg-transaccion');
-    
-    // Ocultamos mensajes previos
-    msgBox.className = "alert-box hidden"; 
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault(); // Evita que la página se recargue
 
-    // Recopilamos los datos del formulario estructurado
-    const payload = {
-        cliente_id: parseInt(document.getElementById('select-cliente').value),
-        producto_id: parseInt(document.getElementById('select-producto').value),
-        cantidad: parseInt(document.getElementById('input-cantidad').value)
-    };
+        const msgBox = document.getElementById('msg-transaccion');
+        
+        // Ocultamos mensajes previos
+        msgBox.className = "alert-box hidden"; 
 
-    try {
-        // Enviamos los parámetros requeridos por el PROCEDURE atómico
-        const respuesta = await fetch(`${API_BASE_URL}/transacciones/procesar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        // Recopilamos los datos del formulario estructurado
+        const payload = {
+            cliente_id: parseInt(document.getElementById('select-cliente').value),
+            producto_id: parseInt(document.getElementById('select-producto').value),
+            cantidad: parseInt(document.getElementById('input-cantidad').value)
+        };
 
-        const resultado = await respuesta.json();
+        try {
+            // Enviamos los parámetros requeridos por el PROCEDURE atómico
+            const respuesta = await fetch(`${API_BASE_URL}/transacciones/procesar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        msgBox.classList.remove('hidden');
+            const resultado = await respuesta.json();
 
-        if (respuesta.ok) {
-            // Éxito: El procedimiento hizo COMMIT sin lanzar excepciones
-            msgBox.className = "alert-box success";
-            msgBox.innerText = resultado.mensaje || "¡Transacción procesada con éxito total en el servidor!";
-            document.getElementById('form-transaccion').reset(); // Limpiamos formulario
-        } else {
-            // Control de Errores: La base de datos atrapó un problema y lo devolvió limpiamente
+            msgBox.classList.remove('hidden');
+
+            if (respuesta.ok) {
+                // Éxito: El procedimiento hizo COMMIT sin lanzar excepciones
+                msgBox.className = "alert-box success";
+                msgBox.innerText = resultado.mensaje || "¡Transacción procesada con éxito total en el servidor!";
+                document.getElementById('form-transaccion').reset(); // Limpiamos formulario
+            } else {
+                // Control de Errores: La base de datos atrapó un problema y lo devolvió limpiamente
+                msgBox.className = "alert-box error";
+                msgBox.innerText = `Control de Consistencia: ${resultado.error || 'Operación rechazada por reglas de negocio.'}`;
+            }
+
+        } catch (error) {
+            console.error(error);
+            msgBox.classList.remove('hidden');
             msgBox.className = "alert-box error";
-            msgBox.innerText = `Control de Consistencia: ${resultado.error || 'Operación rechazada por reglas de negocio.'}`;
+            msgBox.innerText = "No se pudo conectar con el backend. Verifica que el servidor Flask esté activo y que la base de datos acepte conexiones.";
         }
-
-    } catch (error) {
-        console.error(error);
-        msgBox.classList.remove('hidden');
-        msgBox.className = "alert-box error";
-        msgBox.innerText = "Error crítico de comunicación o red con el servidor.";
-    }
-});
+    });
+}
 
 // 3. visualización de auditoría (AUDIT_LOGS)
 async function actualizarLogsAuditoria() {
@@ -105,6 +110,11 @@ async function actualizarLogsAuditoria() {
 
     } catch (error) {
         console.error(error);
-        tbody.innerHTML = `<tr><td colspan="3" class="text-center" style="color: #991b1b;">Error al conectar con el registro de auditoría.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center" style="color: #991b1b;">Error al conectar con el backend o cargar los logs. Verifica que el servidor esté activo.</td></tr>`;
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    inicializarFormulario();
+    actualizarLogsAuditoria();
+});

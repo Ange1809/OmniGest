@@ -4,27 +4,35 @@ from flask import Flask, jsonify, request
 import psycopg2
 from dotenv import load_dotenv
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path=dotenv_path)
 
-app = Flask(__name__, static_folder='frontend', static_url_path='')
+static_folder = os.path.join(os.path.dirname(__file__), 'Frontend')
+app = Flask(__name__, static_folder=static_folder, static_url_path='')
 
 def obtener_conexion():
-    return psycopg2.connect(
+    conn = psycopg2.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASS"),
-        client_encoding='utf8'
+        password=os.getenv("DB_PASS")
     )
+    # Establecer la codificación del cliente explícitamente
+    try:
+        conn.set_client_encoding('UTF8')
+    except Exception:
+        pass
+    return conn
 
-LOG_FILE = "auditoria_errores.txt"
+LOG_FILE = os.path.join(os.path.dirname(__file__), "auditoria_errores.txt")
 
 def registrar_log_en_archivo(sqlstate, mensaje):
     """Simula la inserción en la tabla audit_logs guardando el error en un archivo .txt"""
     fecha_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    mensaje_limpio = str(mensaje).replace("\n", " ").replace("\r", " ")
     with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(f"{fecha_hora}|{sqlstate}|{mensaje}\n")
+        f.write(f"{fecha_hora}|{sqlstate}|{mensaje_limpio}\n")
 
 @app.route('/')
 def index():
@@ -113,13 +121,12 @@ def obtener_logs():
             with open(LOG_FILE, "r", encoding="utf-8") as f:
                 lineas = f.readlines()
                 for linea in reversed(lineas[-10:]):
-                    if idx := linea.strip().split('|'):
-                        if len(idx) == 3:
-                            lista_logs.append({
-                                "fecha_hora": idx[0],
-                                "sqlstate": idx[1],
-                                "mensaje_error": idx[2]
-                            })
+                    if (idx := linea.strip().split('|', 2)) and len(idx) == 3:
+                        lista_logs.append({
+                            "fecha_hora": idx[0],
+                            "sqlstate": idx[1],
+                            "mensaje_error": idx[2]
+                        })
         return jsonify(lista_logs), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
