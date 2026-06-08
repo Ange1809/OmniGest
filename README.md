@@ -56,3 +56,18 @@ Para garantizar la cobertura total de los requerimientos de la cátedra, el proy
 | **Fase 2** | **Franco** | Analista de Performance | **Indexación y Optimización:**<br>• Diagnóstico de cuellos de botella con `EXPLAIN ANALYZE`.<br>• Creación de índices **B-Tree**|
 | **Fase 3** | **Tiziana** | Analista de Performance | •GIN (para JSONB) y GiST(para rangos de fechas) .<br>• Documentación visual con Dalibo. |
 | **Fase 4** | **Mauro** | Ingeniero de Datos | **Lógica de Negocio y SQL Avanzado:**<br>• Desarrollo de consultas recursivas (CTE) para mapear el árbol de subcategorías.<br>• Creación de reportes con *Window Functions* (`RANK() OVER`) para estadísticas de ventas. |
+
+---
+
+---
+
+## 5. Fase 3: Integración de Caché con Redis (Ecosistema NoSQL)
+
+Para la implementación del mecanismo de caché y el patrón Cache-Aside sobre el ecosistema de OmniGest, el equipo subdividió las tareas críticas de la siguiente manera:
+
+| Componente / Rol | Responsable | Tarea Práctica Asignada en la Fase 3 |
+| :--- | :--- | :--- |
+| **Paso 1: Diseño y Estructura** | **Franco** | **Fase de Diseño y Selección:** Identificación de endpoints estables, definición de la consistencia eventual y creación del glosario de claves jerárquicas con sus respectivos TTLs. |
+| **Paso 2: Conectividad y Setup** | **Tiziana** | **Infraestructura:** Instalación del cliente de Redis en Node.js, levantamiento del entorno y programación del mecanismo de Fallback resiliente hacia Postgres. |
+| **Paso 3: Lógica del Patrón** | **Mauro** | **Desarrollo del Algoritmo:** Codificación del flujo Cache-Aside (manejo del algoritmo de decisión ante un Cache HIT y Cache MISS). |
+| **Paso 4: Endpoints y Serialización** | **Angélica** | **Integración API:** Implementación de funciones de conversión de datos (`JSON.parse`/`JSON.stringify`) y montado final sobre las rutas del servidor web. |
