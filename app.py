@@ -3,6 +3,7 @@ import datetime
 from flask import Flask, jsonify, request
 import psycopg2
 from dotenv import load_dotenv
+from redis_connection import redis_client
 
 load_dotenv()
 
@@ -30,29 +31,57 @@ def registrar_log_en_archivo(sqlstate, mensaje):
 def index():
     return app.send_static_file('index.html')
 
-TOTAL_CACHEADO = None
-
 # Endpoint 1
 @app.route('/api/reportes/total-facturado', methods=['GET'])
 def total_facturado():
-    global TOTAL_CACHEADO
+
     try:
-        if TOTAL_CACHEADO is not None:
-            return jsonify({"total": TOTAL_CACHEADO})
-            
-        print("Procesando el millón de registros por primera vez... Espera...")
+        if redis_client:
+            try:
+                dato_cache = redis_client.get("reportes:total_facturado")
+
+                if dato_cache:
+                    print("Cache HIT - Redis")
+                    return jsonify({"total": float(dato_cache)})
+
+            except Exception as redis_error:
+                print(f"Redis no disponible: {redis_error}")
+
+        print("Consultando PostgreSQL...")
+
         conn = obtener_conexion()
         cursor = conn.cursor()
-        cursor.execute("SELECT SUM(cantidad * precio_unitario_cobrado) FROM ventas_detalle;") 
+
+        cursor.execute(
+            "SELECT SUM(cantidad * precio_unitario_cobrado) FROM ventas_detalle;"
+        )
+
         resultado = cursor.fetchone()[0]
-        
+
         cursor.close()
         conn.close()
 
-        TOTAL_CACHEADO = float(resultado or 0)
-        return jsonify({"total": TOTAL_CACHEADO})
+        total = float(resultado or 0)
+
+        try:
+            if redis_client:
+                redis_client.setex(
+                    "reportes:total_facturado",
+                    120,
+                    total
+                )
+                print("Resultado almacenado en Redis")
+
+        except Exception as redis_error:
+            print(f"No se pudo guardar en Redis: {redis_error}")
+
+        return jsonify({"total": total})
+
     except Exception as e:
-        registrar_log_en_archivo("50000", f"Error en métrica: {str(e)}")
+        registrar_log_en_archivo(
+            "50000",
+            f"Error en métrica: {str(e)}"
+        )
         return jsonify({"error": str(e)}), 500
 
 # Endpoint 2
