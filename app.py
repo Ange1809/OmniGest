@@ -3,6 +3,7 @@ import datetime
 from flask import Flask, jsonify, request
 import psycopg2
 from dotenv import load_dotenv
+from redis_connection import redis_client
 
 load_dotenv()
 
@@ -29,15 +30,23 @@ def registrar_log_en_archivo(sqlstate, mensaje):
 def index():
     return app.send_static_file('index.html')
 
-TOTAL_CACHEADO = None
-
-#Endpoint 1
+# ENDPOINT 1 - TOTAL FACTURADO
 @app.route('/api/reportes/total-facturado', methods=['GET'])
 def total_facturado():
-    global TOTAL_CACHEADO
     try:
-        if TOTAL_CACHEADO is not None:
-            return jsonify({"total": TOTAL_CACHEADO})
+        # CACHE REDIS
+        if redis_client:
+            try:
+                dato_cache = redis_client.get("reportes:total_facturado")
+
+                if dato_cache:
+                    print("Cache HIT - Redis")
+                    return jsonify({"total": float(dato_cache)})
+
+            except Exception as redis_error:
+                print(f"Redis no disponible: {redis_error}")
+
+        print("Consultando PostgreSQL...")
 
         conn = obtener_conexion()
         cursor = conn.cursor()
@@ -52,15 +61,26 @@ def total_facturado():
         cursor.close()
         conn.close()
 
-        TOTAL_CACHEADO = float(resultado or 0)
+        total = float(resultado or 0)
 
-        return jsonify({"total": TOTAL_CACHEADO})
+        try:
+            if redis_client:
+                redis_client.setex(
+                    "reportes:total_facturado",
+                    120,
+                    total
+                )
+        except Exception as redis_error:
+            print(f"No se pudo guardar en Redis: {redis_error}")
+
+        return jsonify({"total": total})
 
     except Exception as e:
-        registrar_log_en_archivo("50000", str(e))
+        registrar_log_en_archivo("50000", f"Error en métrica: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-#Endpoint 2
+
+# ENDPOINT 2 - TRANSACCIONES
 @app.route('/api/transacciones/procesar', methods=['POST'])
 def procesar_transaccion():
     datos = request.json
@@ -116,7 +136,8 @@ def procesar_transaccion():
         registrar_log_en_archivo("45001", str(e))
         return jsonify({"error": str(e)}), 400
 
-#Endpoint 3
+
+# ENDPOINT 3 - LOGS
 @app.route('/api/auditoria/logs', methods=['GET'])
 def obtener_logs():
     lista_logs = []
@@ -140,7 +161,8 @@ def obtener_logs():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-#Endpoint 4
+
+# ENDPOINT 4 - UPDATE PRODUCTOS
 @app.route('/api/productos/<int:id>', methods=['PUT'])
 def actualizar_producto(id):
     datos = request.json
@@ -192,16 +214,8 @@ def actualizar_producto(id):
         cursor.close()
         conn.close()
 
-#Redis
+#Cache-Redis
         try:
-            import redis
-
-            redis_client = redis.Redis(
-                host=os.getenv("REDIS_HOST", "localhost"),
-                port=int(os.getenv("REDIS_PORT", 6379)),
-                decode_responses=True
-            )
-
             keys = redis_client.keys("catalogo:*")
 
             for key in keys:
