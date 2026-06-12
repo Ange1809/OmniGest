@@ -22,7 +22,6 @@ def obtener_conexion():
 LOG_FILE = "auditoria_errores.txt"
 
 def registrar_log_en_archivo(sqlstate, mensaje):
-    """Simula la inserción en la tabla audit_logs guardando el error en un archivo .txt"""
     fecha_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"{fecha_hora}|{sqlstate}|{mensaje}\n")
@@ -31,11 +30,11 @@ def registrar_log_en_archivo(sqlstate, mensaje):
 def index():
     return app.send_static_file('index.html')
 
-# Endpoint 1
+# ENDPOINT 1 - TOTAL FACTURADO
 @app.route('/api/reportes/total-facturado', methods=['GET'])
 def total_facturado():
-
     try:
+        # CACHE REDIS
         if redis_client:
             try:
                 dato_cache = redis_client.get("reportes:total_facturado")
@@ -52,9 +51,10 @@ def total_facturado():
         conn = obtener_conexion()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT SUM(cantidad * precio_unitario_cobrado) FROM ventas_detalle;"
-        )
+        cursor.execute("""
+            SELECT SUM(cantidad * precio_unitario_cobrado)
+            FROM ventas_detalle;
+        """)
 
         resultado = cursor.fetchone()[0]
 
@@ -70,89 +70,172 @@ def total_facturado():
                     120,
                     total
                 )
-                print("Resultado almacenado en Redis")
-
         except Exception as redis_error:
             print(f"No se pudo guardar en Redis: {redis_error}")
 
         return jsonify({"total": total})
 
     except Exception as e:
-        registrar_log_en_archivo(
-            "50000",
-            f"Error en métrica: {str(e)}"
-        )
+        registrar_log_en_archivo("50000", f"Error en métrica: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# Endpoint 2
+
+# ENDPOINT 2 - TRANSACCIONES
 @app.route('/api/transacciones/procesar', methods=['POST'])
 def procesar_transaccion():
     datos = request.json
     producto_id = datos.get('producto_id')
     cantidad = datos.get('cantidad')
-    
+
     conn = None
     try:
         conn = obtener_conexion()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT precio_costo FROM productos WHERE id = %s AND eliminado_at IS NULL;", (producto_id,))
+        cursor.execute("""
+            SELECT precio_costo
+            FROM productos
+            WHERE id = %s;
+        """, (producto_id,))
+
         producto = cursor.fetchone()
-        
+
         if not producto:
-            raise Exception(f"Regla de Negocio: El producto con ID {producto_id} no existe en los registros.")
-            
+            return jsonify({"error": "Producto no existe"}), 404
+
         precio_costo = float(producto[0])
         precio_venta = precio_costo * 1.30
-        total_operacion = precio_venta * cantidad
+        total = precio_venta * cantidad
 
-        cursor.execute(
-            "INSERT INTO ventas_cabecera (fecha, total, metodo_pago) VALUES (CURRENT_TIMESTAMP, %s, 'Efectivo') RETURNING id;",
-            (total_operacion,)
-        )
+        cursor.execute("""
+            INSERT INTO ventas_cabecera (fecha, total, metodo_pago)
+            VALUES (CURRENT_TIMESTAMP, %s, 'Efectivo')
+            RETURNING id;
+        """, (total,))
+
         id_venta = cursor.fetchone()[0]
 
-        cursor.execute(
-            "INSERT INTO ventas_detalle (id_venta, id_producto, cantidad, precio_unitario_cobrado) VALUES (%s, %s, %s, %s);",
-            (id_venta, producto_id, cantidad, precio_venta)
-        )
-        
+        cursor.execute("""
+            INSERT INTO ventas_detalle
+            (id_venta, id_producto, cantidad, precio_unitario_cobrado)
+            VALUES (%s, %s, %s, %s);
+        """, (id_venta, producto_id, cantidad, precio_venta))
+
         conn.commit()
-        
+
         cursor.close()
         conn.close()
-        return jsonify({"mensaje": "¡Transacción procesada y guardada con éxito (Simulación de Procedure)!"}), 200
-        
+
+        return jsonify({"mensaje": "Transacción procesada"}), 200
+
     except Exception as e:
         if conn:
             conn.rollback()
             conn.close()
-        
-        mensaje_limpio = str(e)
-        registrar_log_en_archivo("45001", mensaje_limpio)
-        
-        return jsonify({"error": mensaje_limpio}), 400
 
-# Endpoint 3
+        registrar_log_en_archivo("45001", str(e))
+        return jsonify({"error": str(e)}), 400
+
+
+# ENDPOINT 3 - LOGS
 @app.route('/api/auditoria/logs', methods=['GET'])
 def obtener_logs():
     lista_logs = []
+
     try:
         if os.path.exists(LOG_FILE):
             with open(LOG_FILE, "r", encoding="utf-8") as f:
                 lineas = f.readlines()
+
                 for linea in reversed(lineas[-10:]):
-                    if idx := linea.strip().split('|'):
-                        if len(idx) == 3:
-                            lista_logs.append({
-                                "fecha_hora": idx[0],
-                                "sqlstate": idx[1],
-                                "mensaje_error": idx[2]
-                            })
+                    partes = linea.strip().split('|')
+                    if len(partes) == 3:
+                        lista_logs.append({
+                            "fecha_hora": partes[0],
+                            "sqlstate": partes[1],
+                            "mensaje_error": partes[2]
+                        })
+
         return jsonify(lista_logs), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+# ENDPOINT 4 - UPDATE PRODUCTOS
+@app.route('/api/productos/<int:id>', methods=['PUT'])
+def actualizar_producto(id):
+    datos = request.json
+
+    conn = None
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM productos WHERE id = %s;", (id,))
+        existe = cursor.fetchone()
+
+        if not existe:
+            return jsonify({"error": "Producto no encontrado"}), 404
+
+        if not datos:
+            return jsonify({"error": "Body vacío"}), 400
+
+        campos_permitidos = ["nombre", "precio", "stock"]
+
+        campos = []
+        valores = []
+
+        for key, value in datos.items():
+            if key in campos_permitidos:
+                campos.append(f"{key} = %s")
+                valores.append(value)
+
+        if not campos:
+            return jsonify({"error": "No hay campos válidos para actualizar"}), 400
+
+        valores.append(id)
+
+        query = f"""
+            UPDATE productos
+            SET {", ".join(campos)}
+            WHERE id = %s
+            RETURNING *;
+        """
+
+        cursor.execute(query, valores)
+
+        producto = cursor.fetchone()
+        columnas = [desc[0] for desc in cursor.description]
+        producto_dict = dict(zip(columnas, producto))
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+#Cache-Redis
+        try:
+            keys = redis_client.keys("catalogo:*")
+
+            for key in keys:
+                redis_client.delete(key)
+
+        except Exception as e:
+            print("Redis no disponible:", e)
+
+        return jsonify({
+            "mensaje": "Producto actualizado correctamente",
+            "producto": producto_dict
+        }), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
-    print("Iniciando servidor de OmniGest en el puerto 8080...")
+    print("Iniciando servidor OmniGest en puerto 8080...")
     app.run(host="127.0.0.1", port=8080, debug=True)
