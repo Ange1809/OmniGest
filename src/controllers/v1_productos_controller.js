@@ -9,12 +9,8 @@ const dbService = require('../services/db_service');
 // === SOLUCIÓN 3: EL STUB / MOCK DE REDIS ===
 // Mantenemos este objeto simulado temporalmente para que tu endpoint funcione.
 // Cuando Mauro suba su archivo real, solo cambiarás esta línea por un require.
-const cacheService = { 
-    limpiarCacheCatalogo: async () => {
-        console.log("🧹 [Redis Stub] Alerta recibida: Limpiando las llaves 'catalogo:*' de la RAM...");
-    } 
-}; 
-
+// Reemplazamos el Stub simulado por el servicio con la arquitectura real de Mauro
+const cacheService = require('../services/cache_service');
 const crearProducto = async (req, res) => {
     try {
         // 1. Extraer los datos del req.body en JSON
