@@ -1,0 +1,27 @@
+# ==========================================
+# DEPENDENCIAS DE NODE.JS
+# ==========================================
+node_modules/
+npm-debug.log
+package-lock.json
+
+# ==========================================
+# ENTORNOS VIRTUALES DE PYTHON (El error anterior)
+# ==========================================
+.venv/
+venv/
+env/
+__pycache__/
+
+# ==========================================
+# VARIABLES DE ENTORNO Y CREDENCIALES
+# ==========================================
+.env
+.env.local
+
+# ==========================================
+# ARCHIVOS DEL SISTEMA OPERATIVO Y LOGS
+# ==========================================
+.DS_Store
+Thumbs.db
+*.log

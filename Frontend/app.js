@@ -1,4 +1,5 @@
-const API_BASE_URL = '/api'; 
+// app.js (Cambia la línea 1 por esta)
+const API_BASE_URL = 'http://localhost:3000/api';
 
 // 1. llamada a la función (MÉTRICAS / CÁLCULOS)
 async function cargarTotalFacturado() {
@@ -37,9 +38,9 @@ document.getElementById('form-transaccion').addEventListener('submit', async (e)
 
     // Recopilamos los datos del formulario estructurado
     const payload = {
-        cliente_id: parseInt(document.getElementById('select-cliente').value),
-        producto_id: parseInt(document.getElementById('select-producto').value),
-        cantidad: parseInt(document.getElementById('input-cantidad').value)
+      p_cliente_id: parseInt(document.getElementById('select-cliente').value),
+        p_id_producto: parseInt(document.getElementById('select-producto').value),
+        p_cantidad: parseInt(document.getElementById('input-cantidad').value)
     };
 
     try {
