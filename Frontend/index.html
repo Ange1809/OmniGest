@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniGest - Panel de Control</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>OmniGest</h1>
+        <p>Panel de Administración General</p>
+    </header>
+
+    <main class="container">
+        <section class="card" id="seccion-calculos">
+            <h2><span class="icon">📊</span> Indicadores del Sistema </h2>
+            <p class="subtitle"> Métricas comerciales en tiempo real </p>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Total Facturado</h3>
+                    <p class="metric-value" id="txt-total-facturado">$0.00</p>
+                    <button onclick="cargarTotalFacturado()">Calcular</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" id="seccion-transacciones">
+            <h2><span class="icon">💼</span> Registrar Nueva Transacción </h2>
+            <p class="subtitle"> Registrar una nueva operación en el sistema </p>
+            
+            <form id="form-transaccion">
+                <div class="form-group">
+                    <label for="select-cliente">ID Cliente / Invocador:</label>
+                    <input type="number" id="select-cliente" required placeholder="Ej: 45">
+                </div>
+
+                <div class="form-group">
+                    <label for="select-producto">ID Producto / Detalle:</label>
+                    <input type="number" id="select-producto" required placeholder="Ej: 102">
+                </div>
+
+                <div class="form-group">
+                    <label for="input-cantidad">Cantidad:</label>
+                    <input type="number" id="input-cantidad" min="1" required placeholder="Ej: 5">
+                </div>
+
+                <button type="submit" class="btn-submit">Ejecutar Proceso Seguro</button>
+            </form>
+            <div id="msg-transaccion" class="alert-box hidden"></div>
+        </section>
+
+        <section class="card" id="seccion-auditoria">
+            <h2><span class="icon">🛡️</span> Historial de Alertas y Errores </h2>
+            <p class="subtitle"> Registro técnico de control de consistencia </p>
+            <div class="table-container">
+                <table id="tabla-logs">
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Estado SQLSTATE</th>
+                            <th>Mensaje de Error detectado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-logs">
+                        <!-- Los renglones de audit_logs se cargarán dinámicamente con JS -->
+                        <tr>
+                            <td colspan="3" class="text-center">No se han cargado logs todavía.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="actualizarLogsAuditoria()" class="btn-refresh">Refrescar Logs de Error</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 OmniGest - Proyecto Integrador Base de Datos III</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
