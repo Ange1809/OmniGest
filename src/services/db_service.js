@@ -28,4 +28,33 @@ const insertarProducto = async (producto) => {
     return result.rows[0];
 };
 
-module.exports = { insertarProducto };
+const actualizarProducto = async (id, datos) => {
+
+    const campos = [];
+    const valores = [];
+    let contador = 1;
+
+    for (const [key, value] of Object.entries(datos)) {
+        campos.push(`${key} = $${contador}`);
+        valores.push(value);
+        contador++;
+    }
+
+    valores.push(id);
+
+    const query = `
+        UPDATE productos
+        SET ${campos.join(', ')}
+        WHERE id = $${contador}
+        RETURNING *;
+    `;
+
+    const result = await pool.query(query, valores);
+
+    return result.rows[0] || null;
+};
+
+module.exports = {
+    insertarProducto,
+    actualizarProducto
+};
